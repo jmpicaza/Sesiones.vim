@@ -5,10 +5,7 @@
 " Last Modified: 06/04/2011
 " Author: jmpicaza at gmail dot com
 " Description: Plugin for managing sesions the easy way
-" GetLatestVimScripts: 1823 1 :AutoInstall: Sesiones.vim
 " 
-" TODO: let customize path where to save the sessions (l:path) from within .vimrc
-"
 " Installation
 " ------------
 " 1. Copy the Sesiones.vim script to the $HOME/.vim/plugin or the
@@ -33,7 +30,7 @@ function! Sesiones(save_load)
 		let l:sesiones_path = g:sesiones_path
 	else
 		if has('unix') || has('macunix')
-			let l:sesiones_path = $HOME . '/.vimSessions'
+			let l:sesiones_path = $HOME . '/.vim/.vimSessions'
 		else
 			let l:sesiones_path = $VIM . '/_vimSessions'
 			if has('win32')
@@ -45,7 +42,9 @@ function! Sesiones(save_load)
 		endif
 	endif
 
-	let l:sesiones_path=substitute(expand(l:sesiones_path),"\\","\/","g") . "/" . substitute(substitute(expand('%:p').'.vim',"\\","=+","g"),":","=-","")
+	" put the name of the file as the complete route to the file but changing / or \ and : to =+ and =-
+	" fixed linux/mac compatibility
+	let l:sesiones_path=substitute(expand(l:sesiones_path),"\\","\/","g") . "/" . substitute(substitute(expand('%:p').'.vim',"\/\\|\\","=+","g"),":","=-","")
 	if (a:save_load == 0)
 		if (filewritable(l:sesiones_path))
 			echohl MoreMsg
@@ -100,3 +99,5 @@ nmenu &Plugin.Se&ssions.&Save\ Session<Tab><F3>	:call Sesiones(0)<ENTER>
 nmenu &Plugin.Se&ssions.&Load\ Session<Tab><S-F3>	:call Sesiones(1)<ENTER>
 nmenu &Plugin.Se&ssions.&Overwrite\ Session<Tab><C-S-F3>	:call Sesiones(2)<ENTER>
 nmenu &Plugin.Se&ssions.&Delete\ Session<Tab>d<F3>	:call Sesiones(99)<ENTER>
+
+"EOF
