@@ -116,8 +116,25 @@ function! sesiones#save(name, bang) abort
   try
     let l:filename = sesiones#encode_path(sesiones#get_session_name())
     let l:session_file = sesiones#session_file(l:filename)
-    let l:nickname = empty(a:name) ? expand('%:t') : a:name
-    if empty(l:nickname) | let l:nickname = 'session' | endif
+    
+    " Determine nickname: preserve existing if no name provided, otherwise use new name
+    if empty(a:name)
+      " Check if session file already exists and has a nickname
+      let l:nicknames = sesiones#load_nicknames()
+      let l:existing_nickname = get(l:nicknames, fnamemodify(l:session_file, ':t:r'), '')
+      
+      if !empty(l:existing_nickname)
+        " Preserve existing nickname
+        let l:nickname = l:existing_nickname
+      else
+        " First time saving, create nickname from filename
+        let l:nickname = expand('%:t')
+        if empty(l:nickname) | let l:nickname = 'session' | endif
+      endif
+    else
+      " Explicit name provided, use it
+      let l:nickname = a:name
+    endif
     
     execute 'mksession! ' . fnameescape(l:session_file)
     call sesiones#set_nickname(l:session_file, l:nickname)
