@@ -1,25 +1,11 @@
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " File:  "Sesiones.vim"
 " URL:  http://vim.sourceforge.net/script.php?script_id=3542
-" Version: 0.2
-" Last Modified: 06/04/2011
+" Version: 0.3
+" Last Modified: 03/11/2025
 " Author: jmpicaza at gmail dot com
 " Description: Plugin for managing sesions the easy way
 " 
-" Installation
-" ------------
-" 1. Copy the Sesiones.vim script to the $HOME/.vim/plugin or the
-"    $HOME/vimfiles/plugin or the $VIM/vimfiles directory.  Refer to the
-"    ':help add-plugin', ':help add-global-plugin' and ':help runtimepath'
-"    topics for more details about Vim plugins.
-"
-" Usage
-" -----
-" Manage it from the menu in plugins or with the keyboard:
-" <F3> to save a session
-" <S-F3> to load a session
-" <C-S-F3> to overwrite an existing session
-" d<F3> to delete an existing session
 "
 """""""""""""""""""""""""""""""""""""""""""
 " Function for writing and loading sessions

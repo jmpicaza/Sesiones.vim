@@ -1,0 +1,17 @@
+*sesiones.txt*  Simple project sessions for Vim.
+
+COMMANDS ~
+    :SessionSave[!] [name]   Save current session. With !, overwrite.
+    :SessionLoad [name]      Load session. Defaults to current directory.
+    :SessionDelete [name]    Delete session file.
+    :SessionList             List known sessions.
+
+SETTINGS ~
+    let g:sesiones_dir = "~/.vim/sessions" | stdpath('state').'/sessions' in Neovim
+    let g:sesiones_autosave = 0 | 1
+    let g:sesiones_include_tabpages = 1 | 0
+    let g:sesiones_include_buffers  = 0 | 1
+
+DEFAULTS ~
+    We avoid persisting :set options/mappings:  set sessionoptions-=options
+
