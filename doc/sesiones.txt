@@ -1,17 +1,240 @@
-*sesiones.txt*  Simple project sessions for Vim.
+*sesiones.txt*  Professional session manager for Vim and Neovim
 
-COMMANDS ~
-    :SessionSave[!] [name]   Save current session. With !, overwrite.
-    :SessionLoad [name]      Load session. Defaults to current directory.
-    :SessionDelete [name]    Delete session file.
-    :SessionList             List known sessions.
+Author: jmpicaza
+Version: 2.0
+Repository: https://github.com/jmpicaza/Sesiones.vim
 
-SETTINGS ~
-    let g:sesiones_dir = "~/.vim/sessions" | stdpath('state').'/sessions' in Neovim
-    let g:sesiones_autosave = 0 | 1
-    let g:sesiones_include_tabpages = 1 | 0
-    let g:sesiones_include_buffers  = 0 | 1
+==============================================================================
+CONTENTS                                                      *sesiones-contents*
 
-DEFAULTS ~
-    We avoid persisting :set options/mappings:  set sessionoptions-=options
+    1. Introduction .................... |sesiones-introduction|
+    2. Installation .................... |sesiones-installation|
+    3. Commands ........................ |sesiones-commands|
+    4. Configuration ................... |sesiones-configuration|
+    5. Nickname System ................. |sesiones-nicknames|
+    6. Interactive Editor .............. |sesiones-editor|
+    7. Examples ........................ |sesiones-examples|
+    8. Troubleshooting ................. |sesiones-troubleshooting|
+    9. License ......................... |sesiones-license|
 
+==============================================================================
+INTRODUCTION                                              *sesiones-introduction*
+
+Sesiones.vim is a professional session manager that makes it effortless to
+save, load, and manage Vim sessions with intelligent nickname support and
+file-based association.
+
+Key features:
+• File-based session association (not just directory-based)
+• Automatic nickname generation from current filename
+• Interactive session browser with |:SessionsEdit|
+• Tab completion for all session commands
+• Safe filename encoding (no shell quoting issues)
+• XDG Base Directory compliance
+• Backward compatible with legacy configurations
+
+==============================================================================
+INSTALLATION                                              *sesiones-installation*
+
+Using vim-plug: >
+    Plug 'jmpicaza/Sesiones.vim'
+<
+Using Vundle: >
+    Plugin 'jmpicaza/Sesiones.vim'
+<
+Manual installation:
+    Copy plugin files to your Vim runtime directory.
+
+==============================================================================
+COMMANDS                                                      *sesiones-commands*
+
+                                                              *:SessionSave*
+:SessionSave [nickname]    Save current session. If no nickname provided,
+                          uses current filename as nickname. If nickname
+                          provided, saves session with that nickname.
+                          Always overwrites existing session files.
+
+                                                             *:SessionSave!*  
+:SessionSave! [nickname]  Same as :SessionSave (bang has no effect since
+                          sessions are always overwritten).
+
+                                                              *:SessionLoad*
+:SessionLoad [name]       Load session by nickname or encoded filename.
+                          If no name provided, loads session associated with
+                          current file/directory. Tab completion available.
+
+                                                            *:SessionDelete*
+:SessionDelete [name]     Delete session by nickname or encoded filename.
+                          If no name provided, deletes session for current
+                          file/directory. Tab completion available.
+                          Prompts for confirmation.
+
+                                                              *:SessionList*
+:SessionList              Display all available sessions with nicknames,
+                          filenames, sizes, and modification times.
+
+                                                           *:SessionsEdit*
+:SessionsEdit             Open interactive session editor buffer with
+                          visual session management capabilities.
+
+==============================================================================
+CONFIGURATION                                            *sesiones-configuration*
+
+                                                            *g:sesiones_dir*
+g:sesiones_dir            Directory where session files are stored.
+                          Default: XDG-compliant directory
+                          • Neovim: ~/.local/share/nvim/sessions
+                          • Vim: ~/.vim/sessions
+                          
+                          Example: >
+                            let g:sesiones_dir = "~/.vim/sessions"
+<
+                                                       *g:sesiones_include_tabpages*
+g:sesiones_include_tabpages  Include tab pages in sessions.
+                             Default: 1
+                             Example: >
+                               let g:sesiones_include_tabpages = 0
+<
+                                                       *g:sesiones_include_buffers*  
+g:sesiones_include_buffers   Include buffers in sessions.
+                             Default: 1
+                             Example: >
+                               let g:sesiones_include_buffers = 0
+<
+                                                         *g:sesiones_autosave*
+g:sesiones_autosave       Automatically save session on VimLeave.
+                          Default: 0
+                          Example: >
+                            let g:sesiones_autosave = 1
+<
+Legacy Configuration:
+                                                           *g:sesiones_path*
+g:sesiones_path           Legacy session directory setting. Still supported
+                          for backward compatibility. Use g:sesiones_dir
+                          for new configurations.
+
+==============================================================================
+NICKNAME SYSTEM                                            *sesiones-nicknames*
+
+Sesiones.vim features an intelligent nickname system for easier session
+management:
+
+Automatic Nicknames:
+• When editing a file: nickname = filename (e.g., "myproject.py")
+• When in directory only: nickname = "session" 
+• Custom nicknames: :SessionSave MyProject
+
+Nickname Storage:
+• Nicknames are stored in ~/.sessions_nicknames file
+• Format: nickname:encoded_filename
+• Managed automatically, but can be edited manually
+
+Usage:
+• :SessionLoad myproject.py    (loads by nickname)  
+• :SessionLoad MyProject       (loads by custom nickname)
+• Tab completion shows both nicknames and filenames
+
+==============================================================================
+INTERACTIVE EDITOR                                           *sesiones-editor*
+
+The :SessionsEdit command opens a dedicated buffer for session management:
+
+Key Mappings:
+    <Enter>    Load session under cursor
+    dd         Delete session under cursor (with confirmation)
+    r          Edit nickname for session under cursor
+    q          Quit editor
+
+Display Format:
+    Nickname | Encoded_Filename | Size | Date
+
+Example:
+    myproject.py    | home_user_code_myproject.py.vim | 5.2KB | 2025-11-03
+    WebApp          | home_user_sites_webapp.vim      | 3.1KB | 2025-11-02
+
+==============================================================================
+EXAMPLES                                                      *sesiones-examples*
+
+Basic Usage: >
+    " Save session with auto-generated nickname
+    :SessionSave
+    
+    " Save session with custom nickname  
+    :SessionSave WebApp
+    
+    " Load session by nickname
+    :SessionLoad WebApp
+    
+    " Interactive management
+    :SessionsEdit
+<
+Workflow Example: >
+    " Work on a Python project
+    cd ~/code/myproject  
+    vim main.py
+    " ... edit files, arrange windows ...
+    :SessionSave MyProject
+    
+    " Later, quick restoration
+    :SessionLoad MyProject
+    " Everything restored: files, windows, cursor positions
+<
+Key Mappings: >
+    " Example custom mappings
+    nnoremap <leader>ss :SessionSave<CR>
+    nnoremap <leader>sl :SessionLoad<CR>
+    nnoremap <leader>se :SessionsEdit<CR>
+    nnoremap <leader>sx :SessionDelete<CR>
+<
+==============================================================================
+TROUBLESHOOTING                                        *sesiones-troubleshooting*
+
+Common Issues:
+
+Session not found for directory:
+    Problem: "There is no session associated with this directory"
+    Solution: Save a session first with :SessionSave, or provide a nickname
+
+Permission errors:
+    Problem: Cannot create session directory
+    Solution: Check directory permissions for g:sesiones_dir
+
+Tab completion not working:
+    Problem: No completions appear  
+    Solution: Ensure sessions exist and g:sesiones_dir is accessible
+
+Session doesn't restore properly:
+    Problem: Windows/buffers not restored correctly
+    Solution: Check g:sesiones_include_tabpages and g:sesiones_include_buffers
+    
+File encoding issues:
+    Problem: Session filenames appear quoted in shell
+    Solution: This is normal for encoded filenames - files work correctly
+
+==============================================================================
+LICENSE                                                        *sesiones-license*
+
+MIT License
+
+Copyright (c) 2025 jmpicaza
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights  
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:

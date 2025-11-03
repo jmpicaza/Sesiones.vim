@@ -1,89 +1,79 @@
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-" File:  "Sesiones.vim"
-" URL:  http://vim.sourceforge.net/script.php?script_id=3542
-" Version: 0.3
-" Last Modified: 03/11/2025
-" Author: jmpicaza at gmail dot com
-" Description: Plugin for managing sesions the easy way
-" 
-"
-"""""""""""""""""""""""""""""""""""""""""""
-" Function for writing and loading sessions
-"""""""""""""""""""""""""""""""""""""""""""
-function! Sesiones(save_load)
-	"echomsg "<F3> to save, <Shift-F3> to load, <Crtl-Shift-F3> to overwrite, d<F3> to delete"
-	if exists('g:sesiones_path')
-		let l:sesiones_path = g:sesiones_path
-	else
-		if has('unix') || has('macunix')
-			let l:sesiones_path = $HOME . '/.vim/.vimSessions'
-		else
-			let l:sesiones_path = $VIM . '/_vimSessions'
-			if has('win32')
-				" MS-Windows
-				if $USERPROFILE != ''
-					let l:sesiones_path = $USERPROFILE . '/_vimSessions'
-				endif
-			endif
-		endif
-	endif
+" ============================================================================
+" File: sesiones.vim  
+" Description: Professional session manager for Vim and Neovim
+" Author: jmpicaza
+" Version: 2.0
+" Last Modified: 2025-11-03
+" License: MIT
+" Repository: https://github.com/jmpicaza/Sesiones.vim
+" ============================================================================
 
-	" put the name of the file as the complete route to the file but changing / or \ and : to =+ and =-
-	" fixed linux/mac compatibility
-	let l:sesiones_path=substitute(expand(l:sesiones_path),"\\","\/","g") . "/" . substitute(substitute(expand('%:p').'.vim',"\/\\|\\","=+","g"),":","=-","")
-	if (a:save_load == 0)
-		if (filewritable(l:sesiones_path))
-			echohl MoreMsg
-			echomsg "WARNING: A session already exists for this file. Use <Crtl-Shift-F3> for Overwriting or <Shift-F3> to Load."
-			echohl None
-		else
-			exe ":mksession " . l:sesiones_path
-			echohl NonText
-			echomsg "Session successfully saved in file: " . l:sesiones_path
-			echohl None
-		endif
-	elseif (a:save_load == 1)
-		if (filereadable(l:sesiones_path))
-			exe "source " . l:sesiones_path
-		else
-			echohl ErrorMSG
-			echomsg "WARNING: Does not exist a session associated to the file: " . expand('%')
-			echohl None
-		endif
-	elseif (a:save_load == 2)
-		if (filewritable(l:sesiones_path))
-			exe ":mksession! " . l:sesiones_path
-			echohl NonText
-			echomsg "Session successfully overwritten"
-			echohl None
-		else
-			echohl ErrorMSG
-			echomsg "WARNING: Session does not exist. Use <F3> to create it"
-			echohl None
-		end
-	elseif (a:save_load == 99)
-		if (delete(l:sesiones_path))
-			echohl ErrorMSG
-			echomsg "ERROR: There was not possible to delete the file: " . l:sesiones_path
-			echohl None
-		else
-			echohl NonText
-			echomsg "Session deleted for this file."
-			echohl None
-		endif
-	else
-		echohl ErrorMSG
-		echomsg "No valid option selected. Please review your code or command"
-		echohl None
-	endif
-endfunction
-nnoremap <F3> :call Sesiones(0)<ENTER>
-nnoremap <S-F3> :call Sesiones(1)<ENTER>
-nnoremap <C-S-F3> :call Sesiones(2)<ENTER>
-nnoremap d<F3> :call Sesiones(99)<ENTER>
-nmenu &Plugin.Se&ssions.&Save\ Session<Tab><F3>	:call Sesiones(0)<ENTER>
-nmenu &Plugin.Se&ssions.&Load\ Session<Tab><S-F3>	:call Sesiones(1)<ENTER>
-nmenu &Plugin.Se&ssions.&Overwrite\ Session<Tab><C-S-F3>	:call Sesiones(2)<ENTER>
-nmenu &Plugin.Se&ssions.&Delete\ Session<Tab>d<F3>	:call Sesiones(99)<ENTER>
+" Prevent double loading
+if exists('g:loaded_sesiones') || &compatible
+  finish
+endif
+let g:loaded_sesiones = 1
 
-"EOF
+" Save cpoptions and set to vim defaults
+let s:save_cpo = &cpoptions
+set cpoptions&vim
+
+" ============================================================================
+" Configuration and Setup
+" ============================================================================
+
+" Session directory - XDG compliant with legacy support
+if exists('g:sesiones_path')
+  let g:sesiones_dir = expand(g:sesiones_path)
+elseif !exists('g:sesiones_dir')
+  let g:sesiones_dir = has('nvim') ? stdpath('data') . '/sessions' : expand('~/.vim/sessions')
+endif
+
+" Configuration defaults
+let g:sesiones_autosave = get(g:, 'sesiones_autosave', 0)
+let g:sesiones_include_tabpages = get(g:, 'sesiones_include_tabpages', 1)  
+let g:sesiones_include_buffers = get(g:, 'sesiones_include_buffers', 0)
+
+" Auto-save on exit if enabled
+if g:sesiones_autosave
+  augroup sesiones_autosave
+    autocmd!
+    autocmd VimLeavePre * if !empty(expand('%')) | SessionSave | endif
+  augroup END
+endif
+
+" ============================================================================
+" User Commands
+" ============================================================================
+
+command! -nargs=? -bang -complete=customlist,sesiones#complete SessionSave   call sesiones#save(<q-args>, <bang>0)
+command! -nargs=? -complete=customlist,sesiones#complete SessionLoad         call sesiones#load(<q-args>)
+command! -nargs=? -complete=customlist,sesiones#complete SessionDelete       call sesiones#delete(<q-args>)
+command! -nargs=0 SessionList                                                call sesiones#list()
+command! -nargs=0 SessionsEdit                                               call sesiones#edit()
+
+" ============================================================================
+" Auto-save functionality
+" ============================================================================
+if g:sesiones_autosave
+  augroup sesiones_autosave
+    autocmd!
+    autocmd VimLeave * call sesiones#save('', 1)
+  augroup END
+endif
+
+" ============================================================================
+" Legacy key mappings (optional - users can disable in their vimrc)
+" ============================================================================
+if !exists('g:sesiones_no_mappings') || !g:sesiones_no_mappings
+  nnoremap <F3> :SessionSave<CR>
+  nnoremap <S-F3> :SessionLoad<CR>
+  nnoremap <C-S-F3> :SessionSave!<CR>
+  nnoremap d<F3> :SessionDelete<CR>
+endif
+
+" Restore cpoptions
+let &cpoptions = s:save_cpo
+unlet s:save_cpo
+
+" EOF
