@@ -238,16 +238,17 @@ endfunction
 function! vimsessions#save(name, bang) abort
   " Configure session options for comprehensive window state
   let l:original = &sessionoptions
-  set sessionoptions=blank,buffers,curdir,folds,help,localoptions,options,resize,tabpages,terminal,winsize,winpos
+  set sessionoptions=blank,buffers,curdir,folds,help,options,tabpages,winsize,winpos
   if g:vim_sessions_include_tabpages | set sessionoptions+=tabpages | endif
   if g:vim_sessions_include_buffers | set sessionoptions+=buffers | endif
   
   try
+    " Always use current directory/file path for session filename
+    let l:filename = vimsessions#encode_path(vimsessions#get_session_name())
+    let l:session_file = vimsessions#session_file(l:filename)
+    
+    " Determine nickname: preserve existing if no name provided, otherwise use new name
     if empty(a:name)
-      " No explicit name - save to current directory session
-      let l:filename = vimsessions#encode_path(vimsessions#get_session_name())
-      let l:session_file = vimsessions#session_file(l:filename)
-      
       " Check if session file already exists and has a nickname
       let l:nicknames = vimsessions#load_nicknames()
       let l:existing_nickname = get(l:nicknames, fnamemodify(l:session_file, ':t:r'), '')
@@ -261,23 +262,28 @@ function! vimsessions#save(name, bang) abort
         if empty(l:nickname) | let l:nickname = 'session' | endif
       endif
     else
-      " Explicit name provided - save to named session
+      " Explicit name provided, use it as nickname
       let l:nickname = a:name
-      " Check if this nickname already exists
-      let l:existing_filename = vimsessions#find_by_nickname(a:name)
-      if !empty(l:existing_filename)
-        " Use existing session file for this nickname
-        let l:session_file = vimsessions#session_file(l:existing_filename)
-      else
-        " Create new session file using the nickname as filename
-        let l:session_file = vimsessions#session_file(a:name)
-      endif
     endif
+    
+    " Debug: Show what we're about to save
+    echo 'Debug: Saving to file: ' . l:session_file
+    echo 'Debug: Current sessionoptions: ' . &sessionoptions
     
     " Save special window information
     let l:special_windows = s:save_special_windows()
     
-    execute 'mksession! ' . fnameescape(l:session_file)
+    " Execute mksession with error handling
+    try
+      execute 'mksession! ' . fnameescape(l:session_file)
+      echo 'Debug: mksession executed successfully'
+    catch
+      echohl ErrorMsg
+      echo 'Debug: mksession failed: ' . v:exception
+      echohl None
+      throw v:exception
+    endtry
+    
     call vimsessions#set_nickname(l:session_file, l:nickname)
     
     " Save special window data if any
