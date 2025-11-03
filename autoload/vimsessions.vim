@@ -243,11 +243,11 @@ function! vimsessions#save(name, bang) abort
   if g:vim_sessions_include_buffers | set sessionoptions+=buffers | endif
   
   try
-    let l:filename = vimsessions#encode_path(vimsessions#get_session_name())
-    let l:session_file = vimsessions#session_file(l:filename)
-    
-    " Determine nickname: preserve existing if no name provided, otherwise use new name
     if empty(a:name)
+      " No explicit name - save to current directory session
+      let l:filename = vimsessions#encode_path(vimsessions#get_session_name())
+      let l:session_file = vimsessions#session_file(l:filename)
+      
       " Check if session file already exists and has a nickname
       let l:nicknames = vimsessions#load_nicknames()
       let l:existing_nickname = get(l:nicknames, fnamemodify(l:session_file, ':t:r'), '')
@@ -261,8 +261,17 @@ function! vimsessions#save(name, bang) abort
         if empty(l:nickname) | let l:nickname = 'session' | endif
       endif
     else
-      " Explicit name provided, use it
+      " Explicit name provided - save to named session
       let l:nickname = a:name
+      " Check if this nickname already exists
+      let l:existing_filename = vimsessions#find_by_nickname(a:name)
+      if !empty(l:existing_filename)
+        " Use existing session file for this nickname
+        let l:session_file = vimsessions#session_file(l:existing_filename)
+      else
+        " Create new session file using the nickname as filename
+        let l:session_file = vimsessions#session_file(a:name)
+      endif
     endif
     
     " Save special window information
