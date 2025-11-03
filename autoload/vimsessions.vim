@@ -1,5 +1,5 @@
 " ============================================================================
-" File: autoload/vim-sessions.vim
+" File: autoload/vimsessions.vim
 " Description: Session management for Vim and Neovim - Core Functions
 " Author: jmpicaza
 " Version: 2.0
@@ -8,12 +8,12 @@
 " ============================================================================
 
 " Session filename generation {{{1
-function! sesiones#get_session_name() abort
+function! vimsessions#get_session_name() abort
   let l:current_file = expand('%:p')
   return empty(l:current_file) ? getcwd() : l:current_file
 endfunction
 
-function! sesiones#encode_path(path) abort
+function! vimsessions#encode_path(path) abort
   let l:safe = substitute(resolve(expand(a:path)), '^[/\\]*', '', '')
   let l:safe = substitute(l:safe, '[/\\:< >"|*?]', '_', 'g')
   
@@ -35,29 +35,29 @@ function! s:hash_djb2(str) abort
 endfunction
 
 " Session file operations {{{1
-function! sesiones#session_file(name) abort
-  let l:name = empty(a:name) ? sesiones#encode_path(sesiones#get_session_name()) : a:name
+function! vimsessions#session_file(name) abort
+  let l:name = empty(a:name) ? vimsessions#encode_path(vimsessions#get_session_name()) : a:name
   
   " Sanitize user-provided names
-  if !sesiones#is_encoded_name(l:name)
+  if !vimsessions#is_encoded_name(l:name)
     let l:name = substitute(l:name, '[^A-Za-z0-9._-]', '_', 'g')
   endif
   
-  call mkdir(g:sesiones_dir, 'p')
-  return g:sesiones_dir . '/' . l:name . '.vim'
+  call mkdir(g:vim_sessions_dir, 'p')
+  return g:vim_sessions_dir . '/' . l:name . '.vim'
 endfunction
 
-function! sesiones#is_encoded_name(name) abort
+function! vimsessions#is_encoded_name(name) abort
   return a:name =~# '\([=][+-]\|_H[0-9]\+\|^session_\)'
 endfunction
 
 " Nickname management {{{1
-function! sesiones#nicknames_file() abort
-  return g:sesiones_dir . '/.sessions_nicknames'
+function! vimsessions#nicknames_file() abort
+  return g:vim_sessions_dir . '/.sessions_nicknames'
 endfunction
 
-function! sesiones#load_nicknames() abort
-  let l:file = sesiones#nicknames_file()
+function! vimsessions#load_nicknames() abort
+  let l:file = vimsessions#nicknames_file()
   let l:nicknames = {}
   
   if filereadable(l:file)
@@ -72,30 +72,30 @@ function! sesiones#load_nicknames() abort
   return l:nicknames
 endfunction
 
-function! sesiones#save_nicknames(nicknames) abort
+function! vimsessions#save_nicknames(nicknames) abort
   let l:lines = []
   for [l:filename, l:nickname] in items(a:nicknames)
     call add(l:lines, l:nickname . ':' . l:filename)
   endfor
-  call writefile(l:lines, sesiones#nicknames_file())
+  call writefile(l:lines, vimsessions#nicknames_file())
 endfunction
 
-function! sesiones#set_nickname(session_file, nickname) abort
+function! vimsessions#set_nickname(session_file, nickname) abort
   let l:filename = fnamemodify(a:session_file, ':t:r')
-  let l:nicknames = sesiones#load_nicknames()
+  let l:nicknames = vimsessions#load_nicknames()
   let l:nicknames[l:filename] = a:nickname
-  call sesiones#save_nicknames(l:nicknames)
+  call vimsessions#save_nicknames(l:nicknames)
 endfunction
 
-function! sesiones#find_by_nickname(name) abort
+function! vimsessions#find_by_nickname(name) abort
   " Try exact filename first
-  let l:path = sesiones#session_file(a:name)
+  let l:path = vimsessions#session_file(a:name)
   if filereadable(l:path)
     return fnamemodify(l:path, ':t:r')
   endif
   
   " Try nickname lookup
-  let l:nicknames = sesiones#load_nicknames()
+  let l:nicknames = vimsessions#load_nicknames()
   for [l:filename, l:nickname] in items(l:nicknames)
     if l:nickname ==# a:name
       return l:filename
@@ -106,21 +106,21 @@ function! sesiones#find_by_nickname(name) abort
 endfunction
 
 " Session operations {{{1
-function! sesiones#save(name, bang) abort
+function! vimsessions#save(name, bang) abort
   " Configure session options
   let l:original = &sessionoptions
   set sessionoptions=buffers,curdir,folds,help,tabpages,winsize,winpos
-  if g:sesiones_include_tabpages | set sessionoptions+=tabpages | endif
-  if g:sesiones_include_buffers | set sessionoptions+=buffers | endif
+  if g:vim_sessions_include_tabpages | set sessionoptions+=tabpages | endif
+  if g:vim_sessions_include_buffers | set sessionoptions+=buffers | endif
   
   try
-    let l:filename = sesiones#encode_path(sesiones#get_session_name())
-    let l:session_file = sesiones#session_file(l:filename)
+    let l:filename = vimsessions#encode_path(vimsessions#get_session_name())
+    let l:session_file = vimsessions#session_file(l:filename)
     
     " Determine nickname: preserve existing if no name provided, otherwise use new name
     if empty(a:name)
       " Check if session file already exists and has a nickname
-      let l:nicknames = sesiones#load_nicknames()
+      let l:nicknames = vimsessions#load_nicknames()
       let l:existing_nickname = get(l:nicknames, fnamemodify(l:session_file, ':t:r'), '')
       
       if !empty(l:existing_nickname)
@@ -137,7 +137,7 @@ function! sesiones#save(name, bang) abort
     endif
     
     execute 'mksession! ' . fnameescape(l:session_file)
-    call sesiones#set_nickname(l:session_file, l:nickname)
+    call vimsessions#set_nickname(l:session_file, l:nickname)
     
     echohl MoreMsg
     echo 'Saved session: ' . l:nickname . ' (' . fnamemodify(l:session_file, ':t') . ')'
@@ -151,10 +151,10 @@ function! sesiones#save(name, bang) abort
   endtry
 endfunction
 
-function! sesiones#load(name) abort
+function! vimsessions#load(name) abort
   if empty(a:name)
-    let l:filename = sesiones#encode_path(sesiones#get_session_name())
-    let l:path = sesiones#session_file(l:filename)
+    let l:filename = vimsessions#encode_path(vimsessions#get_session_name())
+    let l:path = vimsessions#session_file(l:filename)
     
     if !filereadable(l:path)
       echohl WarningMsg
@@ -163,14 +163,14 @@ function! sesiones#load(name) abort
       return
     endif
   else
-    let l:filename = sesiones#find_by_nickname(a:name)
+    let l:filename = vimsessions#find_by_nickname(a:name)
     if empty(l:filename)
       echohl WarningMsg
       echo 'Session not found: ' . a:name
       echohl None
       return
     endif
-    let l:path = sesiones#session_file(l:filename)
+    let l:path = vimsessions#session_file(l:filename)
   endif
   
   try
@@ -185,8 +185,8 @@ function! sesiones#load(name) abort
   endtry
 endfunction
 
-function! sesiones#delete(name) abort
-  let l:filename = empty(a:name) ? sesiones#encode_path(sesiones#get_session_name()) : sesiones#find_by_nickname(a:name)
+function! vimsessions#delete(name) abort
+  let l:filename = empty(a:name) ? vimsessions#encode_path(vimsessions#get_session_name()) : vimsessions#find_by_nickname(a:name)
   if empty(l:filename)
     echohl WarningMsg
     echo 'Session not found: ' . (empty(a:name) ? 'current directory' : a:name)
@@ -194,7 +194,7 @@ function! sesiones#delete(name) abort
     return
   endif
   
-  let l:path = sesiones#session_file(l:filename)
+  let l:path = vimsessions#session_file(l:filename)
   if !filereadable(l:path)
     echohl WarningMsg
     echo 'Session file not found: ' . fnamemodify(l:path, ':t')
@@ -204,10 +204,10 @@ function! sesiones#delete(name) abort
   
   if delete(l:path) == 0
     " Remove nickname if exists
-    let l:nicknames = sesiones#load_nicknames()
+    let l:nicknames = vimsessions#load_nicknames()
     if has_key(l:nicknames, l:filename)
       unlet l:nicknames[l:filename]
-      call sesiones#save_nicknames(l:nicknames)
+      call vimsessions#save_nicknames(l:nicknames)
     endif
     
     echohl MoreMsg
@@ -220,19 +220,19 @@ function! sesiones#delete(name) abort
   endif
 endfunction
 
-function! sesiones#list() abort
-  let l:files = sort(glob(g:sesiones_dir . '/*.vim', 0, 1))
+function! vimsessions#list() abort
+  let l:files = sort(glob(g:vim_sessions_dir . '/*.vim', 0, 1))
   if empty(l:files)
     echohl WarningMsg
-    echo 'No sessions found in ' . g:sesiones_dir
+    echo 'No sessions found in ' . g:vim_sessions_dir
     echohl None
     return
   endif
   
-  echo 'Available sessions in ' . g:sesiones_dir . ':'
+  echo 'Available sessions in ' . g:vim_sessions_dir . ':'
   echo ''
   
-  let l:nicknames = sesiones#load_nicknames()
+  let l:nicknames = vimsessions#load_nicknames()
   for l:file in l:files
     let l:filename = fnamemodify(l:file, ':t:r')
     let l:nickname = get(l:nicknames, l:filename, '')
@@ -247,11 +247,11 @@ function! sesiones#list() abort
 endfunction
 
 " Interactive session editor {{{1
-function! sesiones#edit() abort
-  let l:files = sort(glob(g:sesiones_dir . '/*.vim', 0, 1))
+function! vimsessions#edit() abort
+  let l:files = sort(glob(g:vim_sessions_dir . '/*.vim', 0, 1))
   if empty(l:files)
     echohl WarningMsg
-    echo 'No sessions found in ' . g:sesiones_dir
+    echo 'No sessions found in ' . g:vim_sessions_dir
     echohl None
     return
   endif
@@ -261,7 +261,7 @@ function! sesiones#edit() abort
   
   " Add header
   call setline(1, [
-        \ '" Sesiones.vim - Interactive Session Editor',
+        \ '" vim-sessions - Interactive Session Editor',
         \ '" ',
         \ '" Instructions:',
         \ '"   <Enter>  - Load session under cursor',
@@ -275,7 +275,7 @@ function! sesiones#edit() abort
         \ ])
   
   " Add sessions
-  let l:nicknames = sesiones#load_nicknames()
+  let l:nicknames = vimsessions#load_nicknames()
   let l:line_num = 12
   for l:file in l:files
     let l:filename = fnamemodify(l:file, ':t')
@@ -321,7 +321,7 @@ function! s:load_session() abort
   let [l:nickname, l:filename] = s:get_session_info()
   if !empty(l:filename)
     close
-    call sesiones#load(l:filename)
+    call vimsessions#load(l:filename)
   endif
 endfunction
 
@@ -329,7 +329,7 @@ function! s:delete_session() abort
   let [l:nickname, l:filename] = s:get_session_info()
   if !empty(l:filename)
     if confirm('Delete session "' . l:nickname . '"?', "&Yes\n&No", 2) == 1
-      call sesiones#delete(l:filename)
+      call vimsessions#delete(l:filename)
       delete _
       echo 'Deleted session: ' . l:nickname
     endif
@@ -344,8 +344,8 @@ function! s:rename_session() abort
   
   let l:new_nickname = input('Edit nickname: ', l:old_nickname)
   if !empty(l:new_nickname) && l:new_nickname !=# l:old_nickname
-    let l:session_file = sesiones#session_file(l:filename)
-    call sesiones#set_nickname(l:session_file, l:new_nickname)
+    let l:session_file = vimsessions#session_file(l:filename)
+    call vimsessions#set_nickname(l:session_file, l:new_nickname)
     
     " Update the line
     let l:parts = split(getline('.'), ' | ')
@@ -357,9 +357,9 @@ function! s:rename_session() abort
 endfunction
 
 " Command completion {{{1
-function! sesiones#complete(ArgLead, CmdLine, CursorPos) abort
+function! vimsessions#complete(ArgLead, CmdLine, CursorPos) abort
   let l:candidates = []
-  let l:nicknames = sesiones#load_nicknames()
+  let l:nicknames = vimsessions#load_nicknames()
   
   " Add nicknames
   for l:nickname in values(l:nicknames)
@@ -369,7 +369,7 @@ function! sesiones#complete(ArgLead, CmdLine, CursorPos) abort
   endfor
   
   " Add filenames
-  for l:file in glob(g:sesiones_dir . '/*.vim', 0, 1)
+  for l:file in glob(g:vim_sessions_dir . '/*.vim', 0, 1)
     let l:filename = fnamemodify(l:file, ':t:r')
     if l:filename =~# '^' . escape(a:ArgLead, '.*^$[]')
       call add(l:candidates, l:filename)
