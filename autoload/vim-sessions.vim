@@ -1,5 +1,5 @@
 " ============================================================================
-" File: autoload/sesiones.vim
+" File: autoload/vim-sessions.vim
 " Description: Session management for Vim and Neovim - Core Functions
 " Author: jmpicaza
 " Version: 2.0

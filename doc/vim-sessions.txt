@@ -1,26 +1,26 @@
-*sesiones.txt*  Professional session manager for Vim and Neovim
+*vim-sessions.txt*  Professional session manager for Vim and Neovim
 
 Author: jmpicaza
 Version: 2.0
-Repository: https://github.com/jmpicaza/Sesiones.vim
+Repository: https://github.com/jmpicaza/vim-sessions
 
 ==============================================================================
-CONTENTS                                                      *sesiones-contents*
+CONTENTS                                                      *vim-sessions-contents*
 
-    1. Introduction .................... |sesiones-introduction|
-    2. Installation .................... |sesiones-installation|
-    3. Commands ........................ |sesiones-commands|
-    4. Configuration ................... |sesiones-configuration|
-    5. Nickname System ................. |sesiones-nicknames|
-    6. Interactive Editor .............. |sesiones-editor|
-    7. Examples ........................ |sesiones-examples|
-    8. Troubleshooting ................. |sesiones-troubleshooting|
-    9. License ......................... |sesiones-license|
+    1. Introduction .................... |vim-sessions-introduction|
+    2. Installation .................... |vim-sessions-installation|
+    3. Commands ........................ |vim-sessions-commands|
+    4. Configuration ................... |vim-sessions-configuration|
+    5. Nickname System ................. |vim-sessions-nicknames|
+    6. Interactive Editor .............. |vim-sessions-editor|
+    7. Examples ........................ |vim-sessions-examples|
+    8. Troubleshooting ................. |vim-sessions-troubleshooting|
+    9. License ......................... |vim-sessions-license|
 
 ==============================================================================
-INTRODUCTION                                              *sesiones-introduction*
+INTRODUCTION                                              *vim-sessions-introduction*
 
-Sesiones.vim is a professional session manager that makes it effortless to
+vim-sessions is a professional session manager that makes it effortless to
 save, load, and manage Vim sessions with intelligent nickname support and
 file-based association.
 
@@ -34,19 +34,19 @@ Key features:
 • Backward compatible with legacy configurations
 
 ==============================================================================
-INSTALLATION                                              *sesiones-installation*
+INSTALLATION                                              *vim-sessions-installation*
 
 Using vim-plug: >
-    Plug 'jmpicaza/Sesiones.vim'
+    Plug 'jmpicaza/vim-sessions'
 <
 Using Vundle: >
-    Plugin 'jmpicaza/Sesiones.vim'
+    Plugin 'jmpicaza/vim-sessions'
 <
 Manual installation:
     Copy plugin files to your Vim runtime directory.
 
 ==============================================================================
-COMMANDS                                                      *sesiones-commands*
+COMMANDS                                                      *vim-sessions-commands*
 
                                                               *:SessionSave*
 :SessionSave [nickname]    Save current session. If no nickname provided,
@@ -78,45 +78,45 @@ COMMANDS                                                      *sesiones-commands
                           visual session management capabilities.
 
 ==============================================================================
-CONFIGURATION                                            *sesiones-configuration*
+CONFIGURATION                                            *vim-sessions-configuration*
 
-                                                            *g:sesiones_dir*
-g:sesiones_dir            Directory where session files are stored.
+                                                            *g:vim-sessions_dir*
+g:vim-sessions_dir            Directory where session files are stored.
                           Default: XDG-compliant directory
                           • Neovim: ~/.local/share/nvim/sessions
                           • Vim: ~/.vim/sessions
                           
                           Example: >
-                            let g:sesiones_dir = "~/.vim/sessions"
+                            let g:vim-sessions_dir = "~/.vim/sessions"
 <
-                                                       *g:sesiones_include_tabpages*
-g:sesiones_include_tabpages  Include tab pages in sessions.
+                                                       *g:vim-sessions_include_tabpages*
+g:vim-sessions_include_tabpages  Include tab pages in sessions.
                              Default: 1
                              Example: >
-                               let g:sesiones_include_tabpages = 0
+                               let g:vim-sessions_include_tabpages = 0
 <
-                                                       *g:sesiones_include_buffers*  
-g:sesiones_include_buffers   Include buffers in sessions.
+                                                       *g:vim-sessions_include_buffers*  
+g:vim-sessions_include_buffers   Include buffers in sessions.
                              Default: 1
                              Example: >
-                               let g:sesiones_include_buffers = 0
+                               let g:vim-sessions_include_buffers = 0
 <
-                                                         *g:sesiones_autosave*
-g:sesiones_autosave       Automatically save session on VimLeave.
+                                                         *g:vim-sessions_autosave*
+g:vim-sessions_autosave       Automatically save session on VimLeave.
                           Default: 0
                           Example: >
-                            let g:sesiones_autosave = 1
+                            let g:vim-sessions_autosave = 1
 <
 Legacy Configuration:
-                                                           *g:sesiones_path*
-g:sesiones_path           Legacy session directory setting. Still supported
-                          for backward compatibility. Use g:sesiones_dir
+                                                           *g:vim-sessions_path*
+g:vim-sessions_path           Legacy session directory setting. Still supported
+                          for backward compatibility. Use g:vim-sessions_dir
                           for new configurations.
 
 ==============================================================================
-NICKNAME SYSTEM                                            *sesiones-nicknames*
+NICKNAME SYSTEM                                            *vim-sessions-nicknames*
 
-Sesiones.vim features an intelligent nickname system for easier session
+vim-sessions features an intelligent nickname system for easier session
 management:
 
 Automatic Nicknames:
@@ -135,7 +135,7 @@ Usage:
 • Tab completion shows both nicknames and filenames
 
 ==============================================================================
-INTERACTIVE EDITOR                                           *sesiones-editor*
+INTERACTIVE EDITOR                                           *vim-sessions-editor*
 
 The :SessionsEdit command opens a dedicated buffer for session management:
 
@@ -153,7 +153,7 @@ Example:
     WebApp          | home_user_sites_webapp.vim      | 3.1KB | 2025-11-02
 
 ==============================================================================
-EXAMPLES                                                      *sesiones-examples*
+EXAMPLES                                                      *vim-sessions-examples*
 
 Basic Usage: >
     " Save session with auto-generated nickname
@@ -187,7 +187,7 @@ Key Mappings: >
     nnoremap <leader>sx :SessionDelete<CR>
 <
 ==============================================================================
-TROUBLESHOOTING                                        *sesiones-troubleshooting*
+TROUBLESHOOTING                                        *vim-sessions-troubleshooting*
 
 Common Issues:
 
@@ -197,22 +197,22 @@ Session not found for directory:
 
 Permission errors:
     Problem: Cannot create session directory
-    Solution: Check directory permissions for g:sesiones_dir
+    Solution: Check directory permissions for g:vim-sessions_dir
 
 Tab completion not working:
     Problem: No completions appear  
-    Solution: Ensure sessions exist and g:sesiones_dir is accessible
+    Solution: Ensure sessions exist and g:vim-sessions_dir is accessible
 
 Session doesn't restore properly:
     Problem: Windows/buffers not restored correctly
-    Solution: Check g:sesiones_include_tabpages and g:sesiones_include_buffers
+    Solution: Check g:vim-sessions_include_tabpages and g:vim-sessions_include_buffers
     
 File encoding issues:
     Problem: Session filenames appear quoted in shell
     Solution: This is normal for encoded filenames - files work correctly
 
 ==============================================================================
-LICENSE                                                        *sesiones-license*
+LICENSE                                                        *vim-sessions-license*
 
 MIT License
 

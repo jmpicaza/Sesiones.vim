@@ -1,10 +1,10 @@
-# Sesiones.vim
+# vim-sessions
 
 **Professional session manager for Vim and Neovim with intelligent nickname support**
 
 **Author**: jmpicaza - Original creator and maintainer of both the classic and modern versions.
 
-Sesiones.vim makes session management effortless by automatically associating sessions with your current files and providing an intuitive nickname system for easy access.
+vim-sessions makes session management effortless by automatically associating sessions with your current files and providing an intuitive nickname system for easy access.
 
 ---
 
@@ -16,7 +16,7 @@ Sesiones.vim makes session management effortless by automatically associating se
 - **⚡ Tab Completion**: Smart completion for all commands using nicknames or encoded filenames
 - **🛡️ Safe Encoding**: Robust filename encoding that prevents shell quoting issues
 - **📂 XDG Compliant**: Follows XDG Base Directory standards (with legacy support)
-- **🔄 Backward Compatible**: Works with existing `g:sesiones_path` configurations
+- **🔄 Backward Compatible**: Works with existing `g:vim-sessions_path` configurations
 - **🌍 Cross-Platform**: Seamless operation on Linux, macOS, and Windows
 - **⚙️ Professional Quality**: Clean, maintainable code following Vim plugin best practices
 
@@ -24,24 +24,24 @@ Sesiones.vim makes session management effortless by automatically associating se
 
 ### Using [vim-plug](https://github.com/junegunn/vim-plug):
 ```vim
-Plug 'jmpicaza/Sesiones.vim'
+Plug 'jmpicaza/vim-sessions'
 ```
 
 ### Using [Vundle](https://github.com/VundleVim/Vundle.vim):
 ```vim
-Plugin 'jmpicaza/Sesiones.vim'
+Plugin 'jmpicaza/vim-sessions'
 ```
 
 ### Using [Pathogen](https://github.com/tpope/vim-pathogen):
 ```bash
 cd ~/.vim/bundle
-git clone https://github.com/jmpicaza/Sesiones.vim.git
+git clone https://github.com/jmpicaza/vim-sessions.git
 ```
 
 ### Manual Installation:
 ```bash
-git clone https://github.com/jmpicaza/Sesiones.vim.git
-cp -r Sesiones.vim/* ~/.vim/
+git clone https://github.com/jmpicaza/vim-sessions.git
+cp -r vim-sessions/* ~/.vim/
 ```
 
 ## 🚀 Quick Start
@@ -101,7 +101,7 @@ cp -r Sesiones.vim/* ~/.vim/
 - **q**: Quit browser
 
 ```
-" Sesiones.vim - Interactive Session Editor
+" vim-sessions - Interactive Session Editor
 "
 " Instructions:
 "   <Enter>  - Load session under cursor
@@ -135,23 +135,23 @@ Sessions get automatic nicknames based on your current file:
 " ~/.vim/sessions (Vim)
 
 " Custom directory
-let g:sesiones_dir = "~/my-sessions"
+let g:vim-sessions_dir = "~/my-sessions"
 
 " Legacy support (still works)
-let g:sesiones_path = "~/.vim/sessions"
+let g:vim-sessions_path = "~/.vim/sessions"
 ```
 
 ### Session Options
 
 ```vim
 " Include tabpages in sessions (default: 1)
-let g:sesiones_include_tabpages = 1
+let g:vim-sessions_include_tabpages = 1
 
 " Include buffers in sessions (default: 1)  
-let g:sesiones_include_buffers = 1
+let g:vim-sessions_include_buffers = 1
 
 " Auto-save on exit (default: 0)
-let g:sesiones_autosave = 0
+let g:vim-sessions_autosave = 0
 ```
 
 ### Key Mappings
@@ -216,7 +216,7 @@ vim *.py
 " Example FZF integration for session selection
 function! s:session_list()
   let sessions = []
-  for file in glob(g:sesiones_dir . '/*.vim', 0, 1)
+  for file in glob(g:vim-sessions_dir . '/*.vim', 0, 1)
     call add(sessions, fnamemodify(file, ':t:r'))
   endfor
   return sessions
@@ -244,10 +244,10 @@ MIT License - see [LICENSE](LICENSE.md) file for details.
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/jmpicaza/Sesiones.vim/issues)
+- **Issues**: [GitHub Issues](https://github.com/jmpicaza/vim-sessions/issues)
 - **Author**: José Manuel Picaza <jmpicaza@gmail.com>
-- **Repository**: [https://github.com/jmpicaza/Sesiones.vim](https://github.com/jmpicaza/Sesiones.vim)
+- **Repository**: [https://github.com/jmpicaza/vim-sessions](https://github.com/jmpicaza/vim-sessions)
 
 ---
 
-**Sesiones.vim** - Making Vim session management effortless. 🚀
+**vim-sessions** - Making Vim session management effortless. 🚀
