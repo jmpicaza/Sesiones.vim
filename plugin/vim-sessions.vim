@@ -1,8 +1,8 @@
 " ============================================================================
 " File: vim-sessions.vim  
-" Description: Professional session manager for Vim and Neovim
+" Description: Enhanced session manager for Vim and Neovim with special window support
 " Author: jmpicaza
-" Version: 2.0
+" Version: 2.1
 " Last Modified: 2025-11-03
 " License: MIT
 " Repository: https://github.com/jmpicaza/vim-sessions.vim
@@ -33,6 +33,7 @@ endif
 let g:vim_sessions_autosave = get(g:, 'vim_sessions_autosave', 0)
 let g:vim_sessions_include_tabpages = get(g:, 'vim_sessions_include_tabpages', 1)  
 let g:vim_sessions_include_buffers = get(g:, 'vim_sessions_include_buffers', 0)
+let g:vim_sessions_restore_special_windows = get(g:, 'vim_sessions_restore_special_windows', 1)
 
 " Auto-save on exit if enabled
 if g:vim_sessions_autosave

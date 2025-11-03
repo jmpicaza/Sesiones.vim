@@ -25,13 +25,13 @@ save, load, and manage Vim sessions with intelligent nickname support and
 file-based association.
 
 Key features:
-• File-based session association (not just directory-based)
-• Automatic nickname generation from current filename
-• Interactive session browser with |:SessionsEdit|
-• Tab completion for all session commands
-• Safe filename encoding (no shell quoting issues)
-• XDG Base Directory compliance
-• Backward compatible with legacy configurations
+- File-based session association (not just directory-based)
+- Automatic nickname generation from current filename
+- Interactive session browser with |:SessionsEdit|
+- Tab completion for all session commands
+- Safe filename encoding (no shell quoting issues)
+- XDG Base Directory compliance
+- Backward compatible with legacy configurations
 
 ==============================================================================
 INSTALLATION                                              *vim-sessions-installation*
@@ -83,8 +83,8 @@ CONFIGURATION                                            *vim-sessions-configura
                                                             *g:vim-sessions_dir*
 g:vim-sessions_dir            Directory where session files are stored.
                           Default: XDG-compliant directory
-                          • Neovim: ~/.local/share/nvim/sessions
-                          • Vim: ~/.vim/sessions
+                          - Neovim: ~/.local/share/nvim/sessions
+                          - Vim: ~/.vim/sessions
                           
                           Example: >
                             let g:vim-sessions_dir = "~/.vim/sessions"
@@ -120,19 +120,19 @@ vim-sessions features an intelligent nickname system for easier session
 management:
 
 Automatic Nicknames:
-• When editing a file: nickname = filename (e.g., "myproject.py")
-• When in directory only: nickname = "session" 
-• Custom nicknames: :SessionSave MyProject
+- When editing a file: nickname = filename (e.g., "myproject.py")
+- When in directory only: nickname = "session" 
+- Custom nicknames: :SessionSave MyProject
 
 Nickname Storage:
-• Nicknames are stored in ~/.sessions_nicknames file
-• Format: nickname:encoded_filename
-• Managed automatically, but can be edited manually
+- Nicknames are stored in ~/.sessions_nicknames file
+- Format: nickname:encoded_filename
+- Managed automatically, but can be edited manually
 
 Usage:
-• :SessionLoad myproject.py    (loads by nickname)  
-• :SessionLoad MyProject       (loads by custom nickname)
-• Tab completion shows both nicknames and filenames
+- :SessionLoad myproject.py    (loads by nickname)  
+- :SessionLoad MyProject       (loads by custom nickname)
+- Tab completion shows both nicknames and filenames
 
 ==============================================================================
 INTERACTIVE EDITOR                                           *vim-sessions-editor*

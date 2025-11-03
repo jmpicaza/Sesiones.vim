@@ -1,8 +1,8 @@
 " ============================================================================
 " File: autoload/vimsessions.vim
-" Description: Session management for Vim and Neovim - Core Functions
+" Description: Enhanced session management with special window support
 " Author: jmpicaza
-" Version: 2.0
+" Version: 2.1
 " Last Modified: 2025-11-03
 " License: MIT
 " ============================================================================
@@ -105,11 +105,140 @@ function! vimsessions#find_by_nickname(name) abort
   return ''
 endfunction
 
+" Special window state management {{{1
+function! s:save_special_windows() abort
+  let l:special_windows = {}
+  
+  " Save current window and tab info
+  let l:current_tab = tabpagenr()
+  let l:current_win = winnr()
+  
+  " Check each tab page
+  for l:tab in range(1, tabpagenr('$'))
+    execute 'tabnext ' . l:tab
+    let l:tab_info = {}
+    
+    " Check each window in the tab
+    for l:win in range(1, winnr('$'))
+      execute l:win . 'wincmd w'
+      let l:bufname = bufname('%')
+      let l:filetype = &filetype
+      
+      " Detect special windows
+      if l:bufname =~# 'NERD_tree_' || l:filetype ==# 'nerdtree'
+        let l:tab_info[l:win] = {
+              \ 'type': 'nerdtree',
+              \ 'bufname': l:bufname,
+              \ 'width': winwidth(0),
+              \ 'height': winheight(0),
+              \ 'position': l:win == 1 ? 'left' : 'right'
+              \ }
+      elseif l:bufname =~# '__Tagbar__' || l:filetype ==# 'tagbar'
+        let l:tab_info[l:win] = {
+              \ 'type': 'tagbar',
+              \ 'width': winwidth(0),
+              \ 'position': l:win == winnr('$') ? 'right' : 'left'
+              \ }
+      elseif &buftype ==# 'quickfix'
+        let l:tab_info[l:win] = {
+              \ 'type': 'quickfix',
+              \ 'height': winheight(0)
+              \ }
+      elseif getloclist(0, {'size': 0}).size > 0
+        let l:tab_info[l:win] = {
+              \ 'type': 'loclist',
+              \ 'height': winheight(0)
+              \ }
+      elseif &buftype ==# 'terminal'
+        let l:tab_info[l:win] = {
+              \ 'type': 'terminal',
+              \ 'width': winwidth(0),
+              \ 'height': winheight(0)
+              \ }
+      endif
+    endfor
+    
+    if !empty(l:tab_info)
+      let l:special_windows[l:tab] = l:tab_info
+    endif
+  endfor
+  
+  " Restore original position
+  execute 'tabnext ' . l:current_tab
+  execute l:current_win . 'wincmd w'
+  
+  return l:special_windows
+endfunction
+
+function! s:restore_special_windows(session_file) abort
+  " Check if special window restoration is enabled
+  if !get(g:, 'vim_sessions_restore_special_windows', 1)
+    return
+  endif
+  
+  let l:special_file = a:session_file . '.special'
+  if !filereadable(l:special_file)
+    return
+  endif
+  
+  try
+    let l:special_windows = eval(join(readfile(l:special_file), "\n"))
+    
+    " Restore special windows for each tab
+    for [l:tab, l:tab_info] in items(l:special_windows)
+      execute 'tabnext ' . l:tab
+      
+      for [l:win, l:win_info] in items(l:tab_info)
+        if l:win_info.type ==# 'nerdtree'
+          " Try to restore NERDTree
+          if exists(':NERDTreeToggle') && exists('g:NERDTreeWinSize')
+            " Save current NERDTree size setting
+            let l:old_size = g:NERDTreeWinSize
+            let g:NERDTreeWinSize = l:win_info.width
+            
+            " Open NERDTree
+            execute 'NERDTreeToggle'
+            
+            " Move to correct position if needed
+            if l:win_info.position ==# 'right' && winnr() == 1
+              execute 'wincmd L'
+            endif
+            
+            " Restore original size setting
+            let g:NERDTreeWinSize = l:old_size
+          endif
+        elseif l:win_info.type ==# 'tagbar'
+          " Try to restore Tagbar
+          if exists(':TagbarOpen')
+            execute 'TagbarOpen'
+            execute 'vertical resize ' . l:win_info.width
+          endif
+        elseif l:win_info.type ==# 'quickfix'
+          " Restore quickfix window
+          execute 'copen ' . l:win_info.height
+        elseif l:win_info.type ==# 'loclist'
+          " Restore location list
+          execute 'lopen ' . l:win_info.height
+        elseif l:win_info.type ==# 'terminal'
+          " Terminal windows are handled by the session itself
+          " Just resize if needed
+          if has_key(l:win_info, 'width') && has_key(l:win_info, 'height')
+            execute 'resize ' . l:win_info.height
+            execute 'vertical resize ' . l:win_info.width
+          endif
+        endif
+      endfor
+    endfor
+  catch
+    " Ignore errors in special window restoration
+  endtry
+endfunction
+
 " Session operations {{{1
 function! vimsessions#save(name, bang) abort
-  " Configure session options
+  " Configure session options for comprehensive window state
   let l:original = &sessionoptions
-  set sessionoptions=buffers,curdir,folds,help,tabpages,winsize,winpos
+  set sessionoptions=blank,buffers,curdir,folds,help,localoptions,options,resize,tabpages,terminal,winsize,winpos
   if g:vim_sessions_include_tabpages | set sessionoptions+=tabpages | endif
   if g:vim_sessions_include_buffers | set sessionoptions+=buffers | endif
   
@@ -136,8 +265,16 @@ function! vimsessions#save(name, bang) abort
       let l:nickname = a:name
     endif
     
+    " Save special window information
+    let l:special_windows = s:save_special_windows()
+    
     execute 'mksession! ' . fnameescape(l:session_file)
     call vimsessions#set_nickname(l:session_file, l:nickname)
+    
+    " Save special window data if any
+    if !empty(l:special_windows)
+      call writefile([string(l:special_windows)], l:session_file . '.special')
+    endif
     
     echohl MoreMsg
     echo 'Saved session: ' . l:nickname . ' (' . fnamemodify(l:session_file, ':t') . ')'
@@ -175,6 +312,10 @@ function! vimsessions#load(name) abort
   
   try
     execute 'source ' . fnameescape(l:path)
+    
+    " Restore special windows after a short delay
+    call timer_start(100, {-> s:restore_special_windows(l:path)})
+    
     echohl MoreMsg
     echo 'Loaded session: ' . (empty(a:name) ? fnamemodify(l:path, ':t:r') : a:name)
     echohl None
@@ -203,6 +344,12 @@ function! vimsessions#delete(name) abort
   endif
   
   if delete(l:path) == 0
+    " Remove special windows file if exists
+    let l:special_file = l:path . '.special'
+    if filereadable(l:special_file)
+      call delete(l:special_file)
+    endif
+    
     " Remove nickname if exists
     let l:nicknames = vimsessions#load_nicknames()
     if has_key(l:nicknames, l:filename)
