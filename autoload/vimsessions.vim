@@ -2,7 +2,7 @@
 " File: autoload/vimsessions.vim
 " Description: Enhanced session management with special window support
 " Author: jmpicaza
-" Version: 2.2
+" Version: 2.3
 " License: MIT
 " ============================================================================
 
@@ -14,10 +14,9 @@ endfunction
 
 function! vimsessions#encode_path(path) abort
   let l:safe = substitute(resolve(expand(a:path)), '^[/\\]*', '', '')
-  " Use % as separator as requested
+  " Use % separator for paths
   let l:safe = substitute(l:safe, '[/\\:< >"|*?]', '%', 'g')
   
-  " Handle very long paths with hash
   if len(l:safe) > 200
     let l:hash = abs(s:hash_djb2(a:path)) % 1000000
     let l:safe = l:safe[:80] . '_H' . l:hash
@@ -37,12 +36,9 @@ endfunction
 " Session file operations {{{1
 function! vimsessions#session_file(name) abort
   let l:name = empty(a:name) ? vimsessions#encode_path(vimsessions#get_session_name()) : a:name
-  
-  " Sanitize user-provided names (allow % for paths)
   if !vimsessions#is_encoded_name(l:name)
     let l:name = substitute(l:name, '[^A-Za-z0-9._%-]', '_', 'g')
   endif
-  
   call mkdir(g:vim_sessions_dir, 'p')
   return g:vim_sessions_dir . '/' . l:name . '.vim'
 endfunction
@@ -59,16 +55,12 @@ endfunction
 function! vimsessions#load_nicknames() abort
   let l:file = vimsessions#nicknames_file()
   let l:nicknames = {}
-  
   if filereadable(l:file)
     for l:line in readfile(l:file)
       let l:parts = split(l:line, ':')
-      if len(l:parts) >= 2
-        let l:nicknames[l:parts[1]] = l:parts[0]
-      endif
+      if len(l:parts) >= 2 | let l:nicknames[l:parts[1]] = l:parts[0] | endif
     endfor
   endif
-  
   return l:nicknames
 endfunction
 
@@ -88,20 +80,13 @@ function! vimsessions#set_nickname(session_file, nickname) abort
 endfunction
 
 function! vimsessions#find_by_nickname(name) abort
-  " Try exact filename first
   let l:path = vimsessions#session_file(a:name)
-  if filereadable(l:path)
-    return fnamemodify(l:path, ':t:r')
-  endif
+  if filereadable(l:path) | return fnamemodify(l:path, ':t:r') | endif
   
-  " Try nickname lookup
   let l:nicknames = vimsessions#load_nicknames()
   for [l:filename, l:nickname] in items(l:nicknames)
-    if l:nickname ==# a:name
-      return l:filename
-    endif
+    if l:nickname ==# a:name | return l:filename | endif
   endfor
-  
   return ''
 endfunction
 
@@ -110,51 +95,35 @@ function! s:save_special_windows() abort
   let l:special_windows = {}
   let l:current_tab = tabpagenr()
   let l:current_win = winnr()
+  let l:active_buf_name = bufname('%')
   
   for l:tab in range(1, tabpagenr('$'))
     execute 'tabnext ' . l:tab
     let l:tab_info = {}
+    let l:tab_info['active_buf'] = (l:tab == l:current_tab) ? l:active_buf_name : ''
+    let l:tab_info['windows'] = {}
     
     for l:win in range(1, winnr('$'))
       execute l:win . 'wincmd w'
       let l:bufname = bufname('%')
       let l:filetype = &filetype
       
-      " Detect special windows and capture critical metadata (like Roots)
       if l:bufname =~# 'NERD_tree_' || l:filetype ==# 'nerdtree'
         let l:root = ''
         if exists('b:NERDTree')
-            try
-                let l:root = b:NERDTree.root.path.str()
-            catch
-            endtry
+            try | let l:root = b:NERDTree.root.path.str() | catch | endtry
         endif
-        let l:tab_info[l:win] = {
-              \ 'type': 'nerdtree',
-              \ 'root': l:root,
-              \ 'width': winwidth(0),
-              \ 'height': winheight(0),
-              \ 'position': l:win == 1 ? 'left' : 'right'
-              \ }
+        let l:tab_info['windows'][l:win] = { 'type': 'nerdtree', 'root': l:root, 'width': winwidth(0), 'position': l:win == 1 ? 'left' : 'right' }
       elseif l:bufname =~# '__Tagbar__' || l:filetype ==# 'tagbar'
-        let l:tab_info[l:win] = {
-              \ 'type': 'tagbar',
-              \ 'width': winwidth(0)
-              \ }
+        let l:tab_info['windows'][l:win] = { 'type': 'tagbar', 'width': winwidth(0) }
       elseif &buftype ==# 'quickfix'
-        let l:tab_info[l:win] = {
-              \ 'type': 'quickfix',
-              \ 'height': winheight(0)
-              \ }
+        let l:tab_info['windows'][l:win] = { 'type': 'quickfix', 'height': winheight(0) }
       endif
     endfor
     
-    if !empty(l:tab_info)
-      let l:special_windows[l:tab] = l:tab_info
-    endif
+    let l:special_windows[l:tab] = l:tab_info
   endfor
   
-  " Restore original position
   execute 'tabnext ' . l:current_tab
   execute l:current_win . 'wincmd w'
   
@@ -162,57 +131,69 @@ function! s:save_special_windows() abort
 endfunction
 
 function! s:restore_special_windows(session_file) abort
-  if !get(g:, 'vim_sessions_restore_special_windows', 1)
-    return
-  endif
+  if !get(g:, 'vim_sessions_restore_special_windows', 1) | return | endif
   
   let l:special_file = a:session_file . '.special'
-  if !filereadable(l:special_file)
-    return
-  endif
+  if !filereadable(l:special_file) | return | endif
   
   try
-    let l:special_windows = eval(join(readfile(l:special_file), "\n"))
+    let l:special_data = eval(join(readfile(l:special_file), "\n"))
     
-    " Walk through the restored windows and re-initialize plugins if needed
-    for [l:tab, l:tab_info] in items(l:special_windows)
+    for [l:tab, l:tab_data] in items(l:special_data)
       execute 'tabnext ' . l:tab
+      let l:special_wins = l:tab_data['windows']
       
-      for [l:win, l:win_info] in items(l:tab_info)
-        " Ensure the window exists (mksession restored the split)
-        if winnr('$') < l:win | continue | endif
-        execute l:win . 'wincmd w'
-        
-        if l:win_info.type ==# 'nerdtree'
-          " If mksession loaded a text buffer or empty buffer, replace it with real NERDTree
-          if exists(':NERDTree')
-             if !empty(get(l:win_info, 'root', ''))
-                execute 'NERDTree ' . fnameescape(l:win_info.root)
-             else
-                execute 'NERDTreeToggle'
-             endif
-             
-             " Restore size
-             if has_key(l:win_info, 'width')
-                execute 'vertical resize ' . l:win_info.width
-             endif
+      " STEP 1: REMOVE ZOMBIE WINDOWS
+      " We must close the windows that mksession restored for plugins (they are dead buffers now).
+      " We iterate BACKWARDS to avoid index shifting issues.
+      for l:win in reverse(range(1, winnr('$')))
+        if has_key(l:special_wins, l:win)
+          execute l:win . 'wincmd w'
+          " Only close if it looks like a zombie (optional extra safety)
+          if bufname('%') =~# 'NERD_tree_' || bufname('%') =~# '__Tagbar__' || bufname('%') ==# ''
+             try | close | catch | endtry
           endif
-        elseif l:win_info.type ==# 'tagbar' && exists(':TagbarOpen')
-            execute 'TagbarOpen'
-        elseif l:win_info.type ==# 'quickfix'
-            execute 'copen ' . get(l:win_info, 'height', 10)
         endif
       endfor
+      
+      " STEP 2: RE-OPEN PLUGINS FRESH
+      for [l:win_idx, l:win_info] in items(l:special_wins)
+        if l:win_info.type ==# 'nerdtree' && exists(':NERDTree')
+          if !empty(get(l:win_info, 'root', ''))
+            execute 'NERDTree ' . fnameescape(l:win_info.root)
+          else
+            execute 'NERDTreeToggle'
+          endif
+          if has_key(l:win_info, 'width') | execute 'vertical resize ' . l:win_info.width | endif
+          
+        elseif l:win_info.type ==# 'tagbar' && exists(':TagbarOpen')
+          execute 'TagbarOpen'
+          
+        elseif l:win_info.type ==# 'quickfix'
+          execute 'copen ' . get(l:win_info, 'height', 10)
+        endif
+      endfor
+      
+      " STEP 3: RESTORE FOCUS TO CODE
+      " Find the window that has the active buffer we saved
+      if has_key(l:tab_data, 'active_buf') && !empty(l:tab_data['active_buf'])
+        let l:target_win = bufwinnr(l:tab_data['active_buf'])
+        if l:target_win != -1
+          execute l:target_win . 'wincmd w'
+        endif
+      endif
+      
     endfor
   catch
-    " Ignore restoration errors
+    " Ignore errors during restoration to prevent blocking
   endtry
 endfunction
 
 " Session operations {{{1
 function! vimsessions#save(name, bang) abort
-  " Configure options: Exclude 'blank' to avoid ghost windows, exclude 'options' for cleanliness
+  " Configure options
   let l:original = &sessionoptions
+  " Exclude blank to minimize empty windows, exclude options for cleanliness
   set sessionoptions=buffers,curdir,folds,help,tabpages,winsize,winpos
   if g:vim_sessions_include_tabpages | set sessionoptions+=tabpages | endif
   if g:vim_sessions_include_buffers | set sessionoptions+=buffers | endif
@@ -221,7 +202,7 @@ function! vimsessions#save(name, bang) abort
     let l:filename = vimsessions#encode_path(vimsessions#get_session_name())
     let l:session_file = vimsessions#session_file(l:filename)
     
-    " Nickname logic
+    " Resolve nickname
     if empty(a:name)
       let l:nicknames = vimsessions#load_nicknames()
       let l:existing_nickname = get(l:nicknames, fnamemodify(l:session_file, ':t:r'), '')
@@ -230,25 +211,21 @@ function! vimsessions#save(name, bang) abort
       let l:nickname = a:name
     endif
     
-    " 1. Snapshot Plugin State (NERDTree root, etc)
+    " 1. Capture state (NO window manipulation)
     let l:special_windows = s:save_special_windows()
     
-    " 2. Save Session (Snapshot layout exactly as is)
+    " 2. Native Save
     execute 'mksession! ' . fnameescape(l:session_file)
     
-    " 3. Save Sidecar Metadata
+    " 3. Write Metadata
     call vimsessions#set_nickname(l:session_file, l:nickname)
     if !empty(l:special_windows)
       call writefile([string(l:special_windows)], l:session_file . '.special')
     endif
     
-    echohl MoreMsg
-    echo 'Saved session: ' . l:nickname
-    echohl None
+    echohl MoreMsg | echo 'Saved session: ' . l:nickname | echohl None
   catch
-    echohl ErrorMsg
-    echo 'Failed to save session: ' . v:exception
-    echohl None
+    echohl ErrorMsg | echo 'Failed to save session: ' . v:exception | echohl None
   finally
     let &sessionoptions = l:original
   endtry
@@ -259,43 +236,38 @@ function! vimsessions#load(name) abort
     let l:filename = vimsessions#encode_path(vimsessions#get_session_name())
     let l:path = vimsessions#session_file(l:filename)
     if !filereadable(l:path)
-      echohl WarningMsg | echo 'No session found for directory.' | echohl None
-      return
+      echohl WarningMsg | echo 'No session found.' | echohl None | return
     endif
   else
     let l:filename = vimsessions#find_by_nickname(a:name)
     if empty(l:filename)
-      echohl WarningMsg | echo 'Session not found: ' . a:name | echohl None
-      return
+      echohl WarningMsg | echo 'Session not found.' | echohl None | return
     endif
     let l:path = vimsessions#session_file(l:filename)
   endif
   
   try
-    " 1. Wipe current buffers to prevent conflicts (Clean Slate)
+    " 1. Wipe current state
     silent! %bdelete!
     
-    " 2. Load the standard Vim session
+    " 2. Load raw session
     execute 'source ' . fnameescape(l:path)
     
-    " 3. Re-initialize plugins based on saved metadata
+    " 3. Fix windows and plugins
     call s:restore_special_windows(l:path)
     
     echohl MoreMsg
     echo 'Loaded session: ' . (empty(a:name) ? fnamemodify(l:path, ':t:r') : a:name)
     echohl None
   catch
-    echohl ErrorMsg
-    echo 'Failed to load session: ' . v:exception
-    echohl None
+    echohl ErrorMsg | echo 'Failed to load session: ' . v:exception | echohl None
   endtry
 endfunction
 
 function! vimsessions#delete(name) abort
   let l:filename = empty(a:name) ? vimsessions#encode_path(vimsessions#get_session_name()) : vimsessions#find_by_nickname(a:name)
   if empty(l:filename)
-    echohl WarningMsg | echo 'Session not found.' | echohl None
-    return
+    echohl WarningMsg | echo 'Session not found.' | echohl None | return
   endif
   
   let l:path = vimsessions#session_file(l:filename)
@@ -308,7 +280,6 @@ function! vimsessions#delete(name) abort
       unlet l:nicknames[l:filename]
       call vimsessions#save_nicknames(l:nicknames)
     endif
-    
     echohl MoreMsg | echo 'Deleted session: ' . l:filename | echohl None
   else
     echohl ErrorMsg | echo 'Failed to delete session.' | echohl None
@@ -318,18 +289,15 @@ endfunction
 function! vimsessions#list() abort
   let l:files = sort(glob(g:vim_sessions_dir . '/*.vim', 0, 1))
   if empty(l:files)
-    echo 'No sessions found.'
-    return
+    echo 'No sessions found.' | return
   endif
   
   echo 'Available sessions:'
-  echo ''
   let l:nicknames = vimsessions#load_nicknames()
   for l:file in l:files
     let l:filename = fnamemodify(l:file, ':t:r')
     let l:nickname = get(l:nicknames, l:filename, '')
-    let l:display = empty(l:nickname) ? l:filename : l:nickname . ' (' . l:filename . ')'
-    echo printf('  %-40s', l:display)
+    echo printf('  %-40s', empty(l:nickname) ? l:filename : l:nickname . ' (' . l:filename . ')')
   endfor
 endfunction
 
@@ -337,8 +305,7 @@ endfunction
 function! vimsessions#edit() abort
   let l:files = sort(glob(g:vim_sessions_dir . '/*.vim', 0, 1))
   if empty(l:files)
-    echo 'No sessions found.'
-    return
+    echo 'No sessions found.' | return
   endif
   
   new
@@ -354,7 +321,6 @@ function! vimsessions#edit() abort
     let l:nickname = get(l:nicknames, l:rawname, l:rawname)
     let l:size = printf('%6s', getfsize(l:file) . 'B')
     let l:time = strftime('%Y-%m-%d %H:%M', getftime(l:file))
-    
     call setline(l:line_num, printf('%-30s | %-30s | %s | %s', l:nickname, l:filename, l:size, l:time))
     let l:line_num += 1
   endfor
@@ -363,16 +329,13 @@ function! vimsessions#edit() abort
   nnoremap <buffer><silent> dd :call <SID>delete_session()<CR>
   nnoremap <buffer><silent> r :call <SID>rename_session()<CR>
   nnoremap <buffer><silent> q :close<CR>
-  
   call cursor(10, 1)
 endfunction
 
 function! s:get_session_info() abort
   let l:line = getline('.')
-  " Robust regex for parsing
   let l:match = matchlist(l:line, '^\s*\(.\{-}\)\s*|\s*\(.\{-}\)\s*|')
   if len(l:match) < 3 | return ['', ''] | endif
-  
   let l:nickname = trim(l:match[1])
   let l:filename = trim(l:match[2])
   if l:filename =~# '\.vim$' | let l:filename = fnamemodify(l:filename, ':r') | endif
@@ -403,7 +366,6 @@ endfunction
 function! s:rename_session() abort
   let [l:old_nickname, l:filename] = s:get_session_info()
   if empty(l:filename) | return | endif
-  
   let l:new_nickname = input('New nickname: ', l:old_nickname)
   if !empty(l:new_nickname) && l:new_nickname !=# l:old_nickname
     let l:session_file = vimsessions#session_file(l:filename)
