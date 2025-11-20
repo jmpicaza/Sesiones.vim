@@ -109,27 +109,31 @@ endfunction
 " Special window state management {{{1
 function! s:save_special_windows() abort
   let l:special_windows = {}
-  
-  " Save current window and tab info
   let l:current_tab = tabpagenr()
   let l:current_win = winnr()
   
-  " Check each tab page
   for l:tab in range(1, tabpagenr('$'))
     execute 'tabnext ' . l:tab
     let l:tab_info = {}
     
-    " Check each window in the tab
     for l:win in range(1, winnr('$'))
       execute l:win . 'wincmd w'
       let l:bufname = bufname('%')
       let l:filetype = &filetype
       
-      " Detect special windows
       if l:bufname =~# 'NERD_tree_' || l:filetype ==# 'nerdtree'
+        " Capture NERDTree Root
+        let l:root = ''
+        if exists('b:NERDTree')
+            try
+                let l:root = b:NERDTree.root.path.str()
+            catch
+            endtry
+        endif
+
         let l:tab_info[l:win] = {
               \ 'type': 'nerdtree',
-              \ 'bufname': l:bufname,
+              \ 'root': l:root,
               \ 'width': winwidth(0),
               \ 'height': winheight(0),
               \ 'position': l:win == 1 ? 'left' : 'right'
@@ -182,30 +186,30 @@ function! s:restore_special_windows(session_file) abort
     return
   endif
   
-  try
+        try
     let l:special_windows = eval(join(readfile(l:special_file), "\n"))
     
-    " Restore special windows for each tab
     for [l:tab, l:tab_info] in items(l:special_windows)
       execute 'tabnext ' . l:tab
       
       for [l:win, l:win_info] in items(l:tab_info)
         if l:win_info.type ==# 'nerdtree'
-          " Try to restore NERDTree
-          if exists(':NERDTreeToggle') && exists('g:NERDTreeWinSize')
-            " Save current NERDTree size setting
+          if exists(':NERDTree') && exists('g:NERDTreeWinSize')
             let l:old_size = g:NERDTreeWinSize
             let g:NERDTreeWinSize = l:win_info.width
             
-            " Open NERDTree
-            execute 'NERDTreeToggle'
+            " Restore specific root if saved, otherwise toggle default
+            if !empty(get(l:win_info, 'root', ''))
+                execute 'NERDTree ' . fnameescape(l:win_info.root)
+            else
+                execute 'NERDTreeToggle'
+            endif
             
             " Move to correct position if needed
             if l:win_info.position ==# 'right' && winnr() == 1
-              execute 'wincmd L'
+               execute 'wincmd L'
             endif
             
-            " Restore original size setting
             let g:NERDTreeWinSize = l:old_size
           endif
         elseif l:win_info.type ==# 'tagbar'
