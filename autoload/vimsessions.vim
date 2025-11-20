@@ -240,25 +240,36 @@ function! s:restore_special_windows(session_file) abort
 endfunction
 
 " Session operations {{{1
-" New helper to close special windows before saving
+" Improved: Close special windows by scanning backwards (prevents index shifting)
 function! s:close_special_windows(special_windows) abort
   let l:current_tab = tabpagenr()
   
-  for [l:tab, l:tab_info] in items(a:special_windows)
+  " Process each tab
+  for l:tab in range(1, tabpagenr('$'))
     execute 'tabnext ' . l:tab
-    for [l:win, l:win_info] in items(l:tab_info)
-      if l:win_info.type ==# 'nerdtree' && exists(':NERDTreeClose')
-        NERDTreeClose
-      elseif l:win_info.type ==# 'tagbar' && exists(':TagbarClose')
-        TagbarClose
-      elseif l:win_info.type ==# 'quickfix'
-        cclose
-      elseif l:win_info.type ==# 'loclist'
-        lclose
+    
+    " Iterate BACKWARDS from the last window to the first
+    " This is crucial: closing windows changes indices, so we must go in reverse
+    for l:win in reverse(range(1, winnr('$')))
+      execute l:win . 'wincmd w'
+      let l:bufname = bufname('%')
+      let l:filetype = &filetype
+      
+      " Detect and forcefully close special windows
+      if l:bufname =~# 'NERD_tree_' || l:filetype ==# 'nerdtree' ||
+            \ l:bufname =~# '__Tagbar__' || l:filetype ==# 'tagbar' ||
+            \ &buftype ==# 'quickfix' || getloclist(0, {'size': 0}).size > 0
+            
+        try
+          close
+        catch
+          " Ignore close errors (e.g. if it's the last window)
+        endtry
       endif
     endfor
   endfor
   
+  " Restore focus to original tab
   execute 'tabnext ' . l:current_tab
 endfunction
 
