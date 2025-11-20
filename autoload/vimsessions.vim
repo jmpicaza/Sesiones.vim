@@ -244,39 +244,39 @@ endfunction
 function! s:close_special_windows(special_windows) abort
   let l:current_tab = tabpagenr()
   
-  " Process each tab
   for l:tab in range(1, tabpagenr('$'))
     execute 'tabnext ' . l:tab
     
-    " Iterate BACKWARDS from the last window to the first
-    " This is crucial: closing windows changes indices, so we must go in reverse
+    " Iterate backwards to safely close windows without shifting indices
     for l:win in reverse(range(1, winnr('$')))
+      " Safety: Never close the last remaining window
+      if winnr('$') == 1 | break | endif
+
       execute l:win . 'wincmd w'
       let l:bufname = bufname('%')
       let l:filetype = &filetype
       
-      " Detect and forcefully close special windows
-      if l:bufname =~# 'NERD_tree_' || l:filetype ==# 'nerdtree' ||
-            \ l:bufname =~# '__Tagbar__' || l:filetype ==# 'tagbar' ||
-            \ &buftype ==# 'quickfix' || getloclist(0, {'size': 0}).size > 0
-            
+      " Comprehensive check for special windows
+      if l:filetype ==# 'nerdtree' || l:bufname =~# 'NERD_tree_' ||
+            \ l:filetype ==# 'tagbar' || l:bufname =~# '__Tagbar__' ||
+            \ &buftype ==# 'quickfix' || &buftype ==# 'nofile'
         try
           close
         catch
-          " Ignore close errors (e.g. if it's the last window)
+          " If close fails (e.g., fixed window), try to switch to another buffer or ignore
         endtry
       endif
     endfor
   endfor
   
-  " Restore focus to original tab
+  " Return to original tab
   execute 'tabnext ' . l:current_tab
 endfunction
 
-" Updated save function to implement the Close -> Save -> Restore workflow
 function! vimsessions#save(name, bang) abort
   let l:original = &sessionoptions
-  set sessionoptions=blank,buffers,curdir,folds,help,options,tabpages,winsize,winpos
+  
+  set sessionoptions=buffers,curdir,folds,help,tabpages,winsize,winpos
   if g:vim_sessions_include_tabpages | set sessionoptions+=tabpages | endif
   if g:vim_sessions_include_buffers | set sessionoptions+=buffers | endif
   
@@ -284,7 +284,6 @@ function! vimsessions#save(name, bang) abort
     let l:filename = vimsessions#encode_path(vimsessions#get_session_name())
     let l:session_file = vimsessions#session_file(l:filename)
     
-    " Determine nickname (logic unchanged)
     if empty(a:name)
       let l:nicknames = vimsessions#load_nicknames()
       let l:existing_nickname = get(l:nicknames, fnamemodify(l:session_file, ':t:r'), '')
@@ -293,7 +292,6 @@ function! vimsessions#save(name, bang) abort
       let l:nickname = a:name
     endif
     
-    " 1. Analyze and Close special windows to ensure clean session file
     let l:restore_enabled = get(g:, 'vim_sessions_restore_special_windows', 1)
     let l:special_windows = s:save_special_windows()
     
@@ -301,11 +299,15 @@ function! vimsessions#save(name, bang) abort
       call s:close_special_windows(l:special_windows)
     endif
     
-    " 2. Generate clean session file
+    " Ensure we are in a valid window before saving
+    if &filetype ==# 'nerdtree' || &buftype !=# ''
+      " Try to find a normal window
+      wincmd W
+    endif
+
     try
       execute 'mksession! ' . fnameescape(l:session_file)
     catch
-      " If save fails, ensure we still restore windows so user doesn't lose them
       if l:restore_enabled | call s:restore_special_windows(l:session_file) | endif
       echohl ErrorMsg | echo 'Debug: mksession failed: ' . v:exception | echohl None
       throw v:exception
@@ -313,18 +315,15 @@ function! vimsessions#save(name, bang) abort
     
     call vimsessions#set_nickname(l:session_file, l:nickname)
     
-    " 3. Save special window data and Restore windows for the user
     if !empty(l:special_windows)
       call writefile([string(l:special_windows)], l:session_file . '.special')
-      
-      " Immediately restore windows so the editor state looks unchanged to the user
       if l:restore_enabled
         call s:restore_special_windows(l:session_file)
       endif
     endif
     
     echohl MoreMsg
-    echo 'Saved session: ' . l:nickname . ' (' . fnamemodify(l:session_file, ':t') . ')'
+    echo 'Saved session: ' . l:nickname
     echohl None
   catch
     echohl ErrorMsg
