@@ -236,60 +236,76 @@ function! s:restore_special_windows(session_file) abort
 endfunction
 
 " Session operations {{{1
+" New helper to close special windows before saving
+function! s:close_special_windows(special_windows) abort
+  let l:current_tab = tabpagenr()
+  
+  for [l:tab, l:tab_info] in items(a:special_windows)
+    execute 'tabnext ' . l:tab
+    for [l:win, l:win_info] in items(l:tab_info)
+      if l:win_info.type ==# 'nerdtree' && exists(':NERDTreeClose')
+        NERDTreeClose
+      elseif l:win_info.type ==# 'tagbar' && exists(':TagbarClose')
+        TagbarClose
+      elseif l:win_info.type ==# 'quickfix'
+        cclose
+      elseif l:win_info.type ==# 'loclist'
+        lclose
+      endif
+    endfor
+  endfor
+  
+  execute 'tabnext ' . l:current_tab
+endfunction
+
+" Updated save function to implement the Close -> Save -> Restore workflow
 function! vimsessions#save(name, bang) abort
-  " Configure session options for comprehensive window state
   let l:original = &sessionoptions
   set sessionoptions=blank,buffers,curdir,folds,help,options,tabpages,winsize,winpos
   if g:vim_sessions_include_tabpages | set sessionoptions+=tabpages | endif
   if g:vim_sessions_include_buffers | set sessionoptions+=buffers | endif
   
   try
-    " Always use current directory/file path for session filename
     let l:filename = vimsessions#encode_path(vimsessions#get_session_name())
     let l:session_file = vimsessions#session_file(l:filename)
     
-    " Determine nickname: preserve existing if no name provided, otherwise use new name
+    " Determine nickname (logic unchanged)
     if empty(a:name)
-      " Check if session file already exists and has a nickname
       let l:nicknames = vimsessions#load_nicknames()
       let l:existing_nickname = get(l:nicknames, fnamemodify(l:session_file, ':t:r'), '')
-      
-      if !empty(l:existing_nickname)
-        " Preserve existing nickname
-        let l:nickname = l:existing_nickname
-      else
-        " First time saving, create nickname from filename
-        let l:nickname = expand('%:t')
-        if empty(l:nickname) | let l:nickname = 'session' | endif
-      endif
+      let l:nickname = !empty(l:existing_nickname) ? l:existing_nickname : (empty(expand('%:t')) ? 'session' : expand('%:t'))
     else
-      " Explicit name provided, use it as nickname
       let l:nickname = a:name
     endif
     
-    " Debug: Show what we're about to save
-    echo 'Debug: Saving to file: ' . l:session_file
-    echo 'Debug: Current sessionoptions: ' . &sessionoptions
-    
-    " Save special window information
+    " 1. Analyze and Close special windows to ensure clean session file
+    let l:restore_enabled = get(g:, 'vim_sessions_restore_special_windows', 1)
     let l:special_windows = s:save_special_windows()
     
-    " Execute mksession with error handling
+    if l:restore_enabled
+      call s:close_special_windows(l:special_windows)
+    endif
+    
+    " 2. Generate clean session file
     try
       execute 'mksession! ' . fnameescape(l:session_file)
-      echo 'Debug: mksession executed successfully'
     catch
-      echohl ErrorMsg
-      echo 'Debug: mksession failed: ' . v:exception
-      echohl None
+      " If save fails, ensure we still restore windows so user doesn't lose them
+      if l:restore_enabled | call s:restore_special_windows(l:session_file) | endif
+      echohl ErrorMsg | echo 'Debug: mksession failed: ' . v:exception | echohl None
       throw v:exception
     endtry
     
     call vimsessions#set_nickname(l:session_file, l:nickname)
     
-    " Save special window data if any
+    " 3. Save special window data and Restore windows for the user
     if !empty(l:special_windows)
       call writefile([string(l:special_windows)], l:session_file . '.special')
+      
+      " Immediately restore windows so the editor state looks unchanged to the user
+      if l:restore_enabled
+        call s:restore_special_windows(l:session_file)
+      endif
     endif
     
     echohl MoreMsg
@@ -410,6 +426,22 @@ function! vimsessions#list() abort
 endfunction
 
 " Interactive session editor {{{1
+function! s:delete_session() abort
+  let [l:nickname, l:filename] = s:get_session_info()
+  if !empty(l:filename)
+    if confirm('Delete session "' . l:nickname . '"?', "&Yes\n&No", 2) == 1
+      call vimsessions#delete(l:filename)
+
+      " Enable modification briefly to remove the line
+      setlocal modifiable
+      delete _
+      setlocal nomodifiable
+
+      echo 'Deleted session: ' . l:nickname
+    endif
+  endif
+endfunction
+
 function! vimsessions#edit() abort
   let l:files = sort(glob(g:vim_sessions_dir . '/*.vim', 0, 1))
   if empty(l:files)
