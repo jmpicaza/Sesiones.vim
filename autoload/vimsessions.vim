@@ -461,19 +461,19 @@ endfunction
 " Helper functions for session editor
 function! s:get_session_info() abort
   let l:line = getline('.')
-  if l:line !~# ' | '
+  " Robust regex extraction for: Nickname | Filename | ...
+  let l:match = matchlist(l:line, '^\s*\(.\{-}\)\s*|\s*\(.\{-}\)\s*|')
+  
+  if len(l:match) < 3
     return ['', '']
   endif
   
-  let l:parts = split(l:line, ' | ')
-  if len(l:parts) < 2
-    return ['', '']
-  endif
+  let l:nickname = l:match[1]
+  let l:filename = l:match[2]
   
-  let l:nickname = trim(l:parts[0])
-  let l:filename = trim(l:parts[1])
+  " Clean extension
   if l:filename =~# '\.vim$'
-    let l:filename = l:filename[:-5]  " Remove .vim extension
+    let l:filename = fnamemodify(l:filename, ':r')
   endif
   
   return [l:nickname, l:filename]
@@ -482,19 +482,11 @@ endfunction
 function! s:load_session() abort
   let [l:nickname, l:filename] = s:get_session_info()
   if !empty(l:filename)
+    " Close session editor
     close
+    " wipe buffers to ensure clean session load
+    silent! %bdelete!
     call vimsessions#load(l:filename)
-  endif
-endfunction
-
-function! s:delete_session() abort
-  let [l:nickname, l:filename] = s:get_session_info()
-  if !empty(l:filename)
-    if confirm('Delete session "' . l:nickname . '"?', "&Yes\n&No", 2) == 1
-      call vimsessions#delete(l:filename)
-      delete _
-      echo 'Deleted session: ' . l:nickname
-    endif
   endif
 endfunction
 
