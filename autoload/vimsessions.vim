@@ -15,14 +15,15 @@ endfunction
 
 function! vimsessions#encode_path(path) abort
   let l:safe = substitute(resolve(expand(a:path)), '^[/\\]*', '', '')
-  let l:safe = substitute(l:safe, '[/\\:< >"|*?]', '_', 'g')
-  
+  " Change replacement character from '_' to '%'
+  let l:safe = substitute(l:safe, '[/\\:< >"|*?]', '%', 'g')
+
   " Handle very long paths with hash
   if len(l:safe) > 200
     let l:hash = abs(s:hash_djb2(a:path)) % 1000000
     let l:safe = l:safe[:80] . '_H' . l:hash
   endif
-  
+
   return empty(l:safe) ? 'session_default' : l:safe
 endfunction
 
@@ -37,12 +38,12 @@ endfunction
 " Session file operations {{{1
 function! vimsessions#session_file(name) abort
   let l:name = empty(a:name) ? vimsessions#encode_path(vimsessions#get_session_name()) : a:name
-  
-  " Sanitize user-provided names
+
+  " Update sanitization regex to include '%' in allowed characters
   if !vimsessions#is_encoded_name(l:name)
-    let l:name = substitute(l:name, '[^A-Za-z0-9._-]', '_', 'g')
+    let l:name = substitute(l:name, '[^A-Za-z0-9._%-]', '_', 'g')
   endif
-  
+
   call mkdir(g:vim_sessions_dir, 'p')
   return g:vim_sessions_dir . '/' . l:name . '.vim'
 endfunction
