@@ -1,0 +1,57 @@
+" Minimal vimrc for testing Sesiones.vim plugin
+" This ensures we load ONLY our local plugin, not any system installation
+
+" Reset everything to defaults
+set nocompatible
+set runtimepath&
+
+" Add our plugin directory to runtimepath FIRST (before any other plugins)
+let s:plugin_dir = fnamemodify(resolve(expand('<sfile>:p')), ':h:h')
+execute 'set runtimepath^=' . fnameescape(s:plugin_dir)
+
+" Disable all plugin managers and existing plugins
+let g:loaded_pathogen = 1
+let g:did_load_filetypes = 1
+let g:did_indent_on = 1
+
+" Configure our plugin for testing - BEFORE loading the plugin
+let g:vim_sessions_path = expand("$HOME/.vim/jmp/vimSessions")
+let g:vim_sessions_autosave = 0  " Don't autosave during tests
+let g:vim_sessions_include_tabpages = 1
+let g:vim_sessions_include_buffers = 1
+
+" Explicitly load our plugin
+execute 'runtime! plugin/vim-sessions'
+
+" Basic settings for comfortable testing
+set number
+set showcmd
+set laststatus=2
+set statusline=%f\ %m%r%h%w\ [%Y]\ [%{&ff}]\ [%{&fenc}]\ %=%l,%c\ %P
+
+" Test helper functions
+function! TestMessage(msg)
+    echohl MoreMsg
+    echo '[TEST] ' . a:msg
+    echohl None
+endfunction
+
+function! TestError(msg)
+    echohl ErrorMsg
+    echo '[ERROR] ' . a:msg
+    echohl None
+endfunction
+
+function! TestSuccess(msg)
+    echohl MoreMsg
+    echo '[SUCCESS] ' . a:msg
+    echohl None
+endfunction
+
+" Show that we're in test mode
+echo "=== vim-sessionsTest Environment Loaded ==="
+echo "Plugin dir: " . s:plugin_dir
+echo "Sessions dir: " . g:vim_sessions_path
+echo "Available commands: :SessionSave, :SessionLoad, :SessionDelete, :SessionList"
+echo "Type :help vim-sessions for documentation"
+echo ""
